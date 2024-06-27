@@ -1,6 +1,6 @@
 use nix::sys::socket;
 use nix::sys::socket::sockopt::IpTransparent;
-use tokio::net::TcpSocket;
+use tokio::net::{TcpSocket, TcpStream};
 
 const PORT: u16 = 15006;
 const LISTENER_BACKLOG: u32 = 65535;
@@ -17,12 +17,16 @@ async fn main() -> anyhow::Result<()> {
     socket.bind(listen_addr)?;
     let listener = socket.listen(LISTENER_BACKLOG)?;
 
-    while let Ok((downstream_conn, client_addr)) = listener.accept().await {
+    while let Ok((mut downstream_conn, client_addr)) = listener.accept().await {
         let local_addr = downstream_conn.local_addr()?;
         let peer_addr = downstream_conn.peer_addr()?;
         println!("accept new connection, peer[{:?}]->local[{:?}]", peer_addr, local_addr);
 
-        tokio::time::sleep(tokio::time::Duration::from_secs(1000)).await;
+        let upstream_addr = format!("127.0.0.1:{}", local_addr.port());
+        tokio::spawn(async move {
+            let mut upstream_conn = TcpStream::connect(&upstream_addr).await?;
+            tokio::io::copy_bidirectional(&mut downstream_conn, &mut upstream_conn).await?;
+        });
     }
 
     Ok(())
