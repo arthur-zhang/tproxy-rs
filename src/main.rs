@@ -26,6 +26,7 @@ async fn main() -> anyhow::Result<()> {
         tokio::spawn(async move {
             let mut upstream_conn = TcpStream::connect(&upstream_addr).await?;
             tokio::io::copy_bidirectional(&mut downstream_conn, &mut upstream_conn).await?;
+            Ok::<(), anyhow::Error>(())
         });
     }
 
