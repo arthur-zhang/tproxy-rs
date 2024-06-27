@@ -18,13 +18,13 @@ async fn main() -> anyhow::Result<()> {
     let listener = socket.listen(LISTENER_BACKLOG)?;
 
     while let Ok((mut downstream_conn, client_addr)) = listener.accept().await {
-        let local_addr = downstream_conn.local_addr()?;
-        let peer_addr = downstream_conn.peer_addr()?;
-        println!("accept new connection, peer[{:?}]->local[{:?}]", peer_addr, local_addr);
+        println!("accept new connection, peer[{:?}]->local[{:?}]", downstream_conn.peer_addr()?,  downstream_conn.local_addr()?);
 
-        let upstream_addr = format!("127.0.0.1:{}", local_addr.port());
+        let upstream_addr = format!("127.0.0.1:{}", downstream_conn.local_addr()?.port());
         tokio::spawn(async move {
             let mut upstream_conn = TcpStream::connect(&upstream_addr).await?;
+
+            println!("connect to upstream, local[{:?}]->peer[{:?}]", upstream_conn.local_addr()?, upstream_conn.peer_addr()?);
             tokio::io::copy_bidirectional(&mut downstream_conn, &mut upstream_conn).await?;
             Ok::<(), anyhow::Error>(())
         });
