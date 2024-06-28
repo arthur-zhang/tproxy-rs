@@ -21,10 +21,12 @@ async fn main() -> anyhow::Result<()> {
         println!("accept new connection, peer[{:?}]->local[{:?}]", downstream_conn.peer_addr()?,  downstream_conn.local_addr()?);
 
         let upstream_addr = format!("127.0.0.1:{}", downstream_conn.local_addr()?.port());
+
         tokio::spawn(async move {
+            println!("start connect to upstream: {}", upstream_addr);
             let mut upstream_conn = TcpStream::connect(&upstream_addr).await?;
 
-            println!("connect to upstream, local[{:?}]->peer[{:?}]", upstream_conn.local_addr()?, upstream_conn.peer_addr()?);
+            println!("connected to upstream, local[{:?}]->peer[{:?}]", upstream_conn.local_addr()?, upstream_conn.peer_addr()?);
             tokio::io::copy_bidirectional(&mut downstream_conn, &mut upstream_conn).await?;
             Ok::<(), anyhow::Error>(())
         });
