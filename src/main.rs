@@ -7,6 +7,7 @@ use tokio::net::TcpSocket;
 const PORT: u16 = 15006;
 const LISTENER_BACKLOG: u32 = 65535;
 
+
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
     let listen_addr = format!("0.0.0.0:{}", PORT).parse().unwrap();
@@ -22,7 +23,7 @@ async fn main() -> anyhow::Result<()> {
     while let Ok((mut downstream_conn, client_addr)) = listener.accept().await {
         println!("accept new connection, peer[{:?}]->local[{:?}]", downstream_conn.peer_addr()?, downstream_conn.local_addr()?);
 
-        tokio::spawn({
+        let jh = tokio::spawn({
             let client_real_addr = downstream_conn.peer_addr()?;
             let upstream_addr: SocketAddr = format!("127.0.0.1:{}", downstream_conn.local_addr()?.port()).parse()?;
             async move {
@@ -40,6 +41,8 @@ async fn main() -> anyhow::Result<()> {
                 Ok::<(), anyhow::Error>(())
             }
         });
+        let join_result = jh.await;
+        println!("connection closed: {:?}", join_result);
     }
 
     Ok(())
