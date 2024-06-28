@@ -3,7 +3,6 @@ use std::net::SocketAddr;
 use nix::sys::socket;
 use nix::sys::socket::sockopt::IpTransparent;
 use tokio::net::TcpSocket;
-use tokio::net::unix::SocketAddr;
 
 const PORT: u16 = 15006;
 const LISTENER_BACKLOG: u32 = 65535;
