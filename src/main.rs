@@ -33,6 +33,7 @@ async fn main() -> anyhow::Result<()> {
                 // socket::setsockopt(&socket, IpTransparent, &true)?;
 
                 let bind_addr = SocketAddr::new(client_real_ip, 0);
+                println!("start bind to: {}", bind_addr);
                 socket.bind(bind_addr)?;
 
                 let mut upstream_conn = socket.connect(upstream_addr).await?;
