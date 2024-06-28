@@ -1,6 +1,9 @@
+use std::net::SocketAddr;
+
 use nix::sys::socket;
 use nix::sys::socket::sockopt::IpTransparent;
-use tokio::net::{TcpSocket, TcpStream};
+use tokio::net::TcpSocket;
+use tokio::net::unix::SocketAddr;
 
 const PORT: u16 = 15006;
 const LISTENER_BACKLOG: u32 = 65535;
@@ -18,17 +21,25 @@ async fn main() -> anyhow::Result<()> {
     let listener = socket.listen(LISTENER_BACKLOG)?;
 
     while let Ok((mut downstream_conn, client_addr)) = listener.accept().await {
-        println!("accept new connection, peer[{:?}]->local[{:?}]", downstream_conn.peer_addr()?,  downstream_conn.local_addr()?);
+        println!("accept new connection, peer[{:?}]->local[{:?}]", downstream_conn.peer_addr()?, downstream_conn.local_addr()?);
 
-        let upstream_addr = format!("127.0.0.1:{}", downstream_conn.local_addr()?.port());
+        tokio::spawn({
+            let client_real_addr = downstream_conn.peer_addr()?;
+            let upstream_addr: SocketAddr = format!("127.0.0.1:{}", downstream_conn.local_addr()?.port()).parse()?;
+            async move {
+                println!("start connect to upstream: {}", upstream_addr);
+                let socket = TcpSocket::new_v4()?;
+                // #[cfg(any(target_os = "linux"))]
+                // socket::setsockopt(&socket, IpTransparent, &true)?;
 
-        tokio::spawn(async move {
-            println!("start connect to upstream: {}", upstream_addr);
-            let mut upstream_conn = TcpStream::connect(&upstream_addr).await?;
+                socket.bind(client_addr)?;
 
-            println!("connected to upstream, local[{:?}]->peer[{:?}]", upstream_conn.local_addr()?, upstream_conn.peer_addr()?);
-            tokio::io::copy_bidirectional(&mut downstream_conn, &mut upstream_conn).await?;
-            Ok::<(), anyhow::Error>(())
+                let mut upstream_conn = socket.connect(upstream_addr).await?;
+
+                println!("connected to upstream, local[{:?}]->peer[{:?}]", upstream_conn.local_addr()?, upstream_conn.peer_addr()?);
+                tokio::io::copy_bidirectional(&mut downstream_conn, &mut upstream_conn).await?;
+                Ok::<(), anyhow::Error>(())
+            }
         });
     }
 
