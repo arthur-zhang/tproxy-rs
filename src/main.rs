@@ -24,7 +24,7 @@ async fn main() -> anyhow::Result<()> {
         println!("accept new connection, peer[{:?}]->local[{:?}]", downstream_conn.peer_addr()?, downstream_conn.local_addr()?);
 
         let jh = tokio::spawn({
-            let client_real_addr = downstream_conn.peer_addr()?;
+            let client_real_ip = downstream_conn.peer_addr()?.ip();
             let upstream_addr: SocketAddr = format!("127.0.0.1:{}", downstream_conn.local_addr()?.port()).parse()?;
             async move {
                 println!("start connect to upstream: {}", upstream_addr);
@@ -32,7 +32,8 @@ async fn main() -> anyhow::Result<()> {
                 // #[cfg(any(target_os = "linux"))]
                 // socket::setsockopt(&socket, IpTransparent, &true)?;
 
-                socket.bind(client_addr)?;
+                let bind_addr = SocketAddr::new(client_real_ip, 0);
+                socket.bind(bind_addr)?;
 
                 let mut upstream_conn = socket.connect(upstream_addr).await?;
 
