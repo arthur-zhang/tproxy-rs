@@ -29,8 +29,9 @@ async fn main() -> anyhow::Result<()> {
             async move {
                 println!("start connect to upstream: {}", upstream_addr);
                 let socket = TcpSocket::new_v4()?;
-                // #[cfg(any(target_os = "linux"))]
-                // socket::setsockopt(&socket, IpTransparent, &true)?;
+
+                #[cfg(any(target_os = "linux"))]
+                socket::setsockopt(&socket, IpTransparent, &true)?;
 
                 let bind_addr = SocketAddr::new(client_real_ip, 0);
                 match socket.bind(bind_addr) {
