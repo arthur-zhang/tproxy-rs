@@ -1,7 +1,8 @@
 use std::net::SocketAddr;
 
 use nix::sys::socket;
-use nix::sys::socket::sockopt::IpTransparent;
+use nix::sys::socket::sockopt;
+use nix::unistd::{Gid, setgid};
 use tokio::net::TcpSocket;
 
 const PORT: u16 = 15006;
@@ -15,7 +16,10 @@ async fn main() -> anyhow::Result<()> {
     let socket = TcpSocket::new_v4()?;
 
     #[cfg(any(target_os = "linux"))]
-    socket::setsockopt(&socket, IpTransparent, &true)?;
+    setgid(Gid(1337))?;
+
+    #[cfg(any(target_os = "linux"))]
+    socket::setsockopt(&socket, sockopt::IpTransparent, &true)?;
 
     socket.bind(listen_addr)?;
     let listener = socket.listen(LISTENER_BACKLOG)?;
@@ -31,7 +35,10 @@ async fn main() -> anyhow::Result<()> {
                 let socket = TcpSocket::new_v4()?;
 
                 #[cfg(any(target_os = "linux"))]
-                socket::setsockopt(&socket, IpTransparent, &true)?;
+                socket::setsockopt(&socket, sockopt::IpTransparent, &true)?;
+
+                #[cfg(any(target_os = "linux"))]
+                socket::setsockopt(&socket, sockopt::Mark, &0x539)?;
 
                 let bind_addr = SocketAddr::new(client_real_ip, 0);
                 match socket.bind(bind_addr) {
